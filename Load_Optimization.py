@@ -325,38 +325,52 @@ def optimize_load(trailer: TrailerSpec, crates: list[Crate]) -> LoadResult:
     return result
 
 
-def print_report(result: LoadResult, total_crates: int) -> None:
+def format_report(result: LoadResult, total_crates: int) -> str:
     t = result.trailer
-    print(f"\n--- Load plan: {t.name} ---")
-    print(f"Trailer: {t.length_cm:.0f} x {t.width_cm:.0f} x {t.height_cm:.0f} cm")
-    print(f"Weight limit: {t.max_weight_kg:.0f} kg\n")
+    lines = [
+        f"--- Load plan: {t.name} ---",
+        f"Trailer: {t.length_cm:.0f} x {t.width_cm:.0f} x {t.height_cm:.0f} cm",
+        f"Weight limit: {t.max_weight_kg:.0f} kg",
+        "",
+    ]
 
     if result.skipped_too_tall:
-        print("Skipped (exceed trailer height):")
-        for tag in result.skipped_too_tall:
-            print(f"  - {tag}")
-        print()
+        lines.append("Skipped (exceed trailer height):")
+        lines.extend(f"  - {tag}" for tag in result.skipped_too_tall)
+        lines.append("")
 
-    print(f"Crates loaded: {result.loaded_count} / {total_crates}")
-    print("Loaded asset tags:")
-    for p in result.placements:
-        print(f"  {p.asset_tag}")
-
-    print(f"\nTotal weight loaded: {result.total_weight_kg:.2f} kg")
-    print(f"Left: {result.left_weight_kg:.2f} kg | Right: {result.right_weight_kg:.2f} kg")
-    balance = _balance_ratio(result.left_weight_kg, result.right_weight_kg) * 100
-    print(f"Left/right imbalance: {balance:.1f}% (limit {BALANCE_TOLERANCE * 100:.0f}%)")
-    print(f"Cab end (toward driver): {result.cab_weight_kg:.2f} kg")
-    print(f"Door end (rear): {result.door_weight_kg:.2f} kg")
+    lines.append(f"Crates loaded: {result.loaded_count} / {total_crates}")
+    lines.append("Loaded asset tags:")
+    lines.extend(f"  {p.asset_tag}" for p in result.placements)
+    lines.extend(
+        [
+            "",
+            f"Total weight loaded: {result.total_weight_kg:.2f} kg",
+            f"Left: {result.left_weight_kg:.2f} kg | Right: {result.right_weight_kg:.2f} kg",
+            f"Left/right imbalance: {_balance_ratio(result.left_weight_kg, result.right_weight_kg) * 100:.1f}% "
+            f"(limit {BALANCE_TOLERANCE * 100:.0f}%)",
+            f"Cab end (toward driver): {result.cab_weight_kg:.2f} kg",
+            f"Door end (rear): {result.door_weight_kg:.2f} kg",
+        ]
+    )
 
     if result.overflow:
-        print(f"\n*** SECOND TRAILER REQUIRED ***")
-        print(
-            f"{len(result.overflow)} crate(s) could not fit on this trailer "
-            f"({t.name}). Load these on a follow-up trailer:"
+        lines.extend(
+            [
+                "",
+                "*** SECOND TRAILER REQUIRED ***",
+                f"{len(result.overflow)} crate(s) could not fit on this trailer ({t.name}). "
+                "Load these on a follow-up trailer:",
+            ]
         )
-        for tag in result.overflow:
-            print(f"  {tag}")
+        lines.extend(f"  {tag}" for tag in result.overflow)
+
+    return "\n".join(lines)
+
+
+def print_report(result: LoadResult, total_crates: int) -> None:
+    print()
+    print(format_report(result, total_crates))
 
 
 def save_loading_plot(result: LoadResult, output_dir: Path) -> Path:
@@ -473,15 +487,19 @@ def run_load_plan(
     trailer: TrailerSpec,
     data_path: Path | None = None,
     plots_dir: Path | None = None,
-) -> LoadResult:
+    *,
+    quiet: bool = False,
+) -> tuple[LoadResult, Path, str]:
     data_path = data_path or Path(__file__).resolve().parent / "crate_data.xlsx"
     plots_dir = plots_dir or Path(__file__).resolve().parent / "load_plans"
     crates = load_crates_from_excel(data_path)
     result = optimize_load(trailer, crates)
-    print_report(result, total_crates=len(crates))
+    report = format_report(result, total_crates=len(crates))
     plot_path = save_loading_plot(result, plots_dir)
-    print(f"\nPlot saved: {plot_path}")
-    return result
+    if not quiet:
+        print_report(result, total_crates=len(crates))
+        print(f"\nPlot saved: {plot_path}")
+    return result, plot_path, report
 
 
 def main() -> None:

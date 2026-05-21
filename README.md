@@ -260,6 +260,17 @@ The same pairing and chessboard logic applies to any dimensions you enter.
 
 ---
 
+## Running on a work PC (no VS Code, no console)
+
+For warehouse or office PCs without developer tools, use the **desktop app**:
+
+1. Double-click **`Run Load Planner.bat`** — opens a normal Windows window.
+2. Or ask IT to build **`Load Planner.exe`** once with `build_exe.bat` and copy it to PCs that do not have Python.
+
+Full deployment steps (IT checklist, shortcuts, troubleshooting): **[DEPLOY_WORK_PC.md](DEPLOY_WORK_PC.md)**
+
+---
+
 ## Example commands
 
 ```powershell
