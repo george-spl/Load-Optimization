@@ -286,3 +286,10 @@ python Load_Optimization.py --uk --name UK-WIDE
 ```
 
 ---
+
+
+---
+
+## License
+
+Please see **`LICENSE`**
