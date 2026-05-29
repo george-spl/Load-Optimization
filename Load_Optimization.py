@@ -138,6 +138,7 @@ class TrailerLoadPlanner:
         self.cab_weight = 0.0
         self.door_weight = 0.0
         self.loaded_weight = 0.0
+        self._last_chessboard_left: bool | None = None
 
     def _region_free(self, x: int, y: int, length: int, width: int) -> bool:
         if x < 0 or y < 0:
@@ -152,7 +153,80 @@ class TrailerLoadPlanner:
     def _projected_balance_ok(self, weight: float, center_y: float) -> bool:
         new_left = self.left_weight + (weight if center_y < self.trailer.width_cm / 2 else 0)
         new_right = self.right_weight + (weight if center_y >= self.trailer.width_cm / 2 else 0)
+        if new_left == 0 or new_right == 0:
+            return True
         return _balance_ratio(new_left, new_right) <= self.balance_tolerance
+
+    def _can_pair(self, c1: Crate, c2: Crate) -> bool:
+        return (
+            c1.width_cm + c2.width_cm <= self.grid_w
+            and c1.height_cm <= self.trailer.height_cm
+            and c2.height_cm <= self.trailer.height_cm
+        )
+
+    def _wall_y(self, crate: Crate, left_wall: bool) -> int:
+        return 0 if left_wall else self.grid_w - crate.width_cm
+
+    def _chessboard_balance_ok(self, weight: float, left_wall: bool) -> bool:
+        new_left = self.left_weight + (weight if left_wall else 0)
+        new_right = self.right_weight + (weight if not left_wall else 0)
+        if new_left == 0 or new_right == 0:
+            return True
+        if _balance_ratio(new_left, new_right) <= self.balance_tolerance:
+            return True
+        if self._last_chessboard_left is not None and left_wall != self._last_chessboard_left:
+            return True
+        return False
+
+    def _chessboard_fits(self, crate: Crate, x: int, left_wall: bool) -> bool:
+        y = self._wall_y(crate, left_wall)
+        if not self._region_free(x, y, crate.length_cm, crate.width_cm):
+            return False
+        return self._chessboard_balance_ok(crate.weight_kg, left_wall)
+
+    def _next_chessboard_x(self) -> int:
+        if not self.placements:
+            return 0
+        return max(p.x + p.length_cm for p in self.placements)
+
+    def _next_chessboard_side(self) -> bool:
+        if self._last_chessboard_left is None:
+            return True
+        return not self._last_chessboard_left
+
+    def _chessboard_side_order(self) -> list[bool]:
+        if self.left_weight > self.right_weight:
+            return [False, True]
+        if self.right_weight > self.left_weight:
+            return [True, False]
+        return [self._next_chessboard_side(), not self._next_chessboard_side()]
+
+    def _find_best_chessboard(self, remaining: list[Crate]) -> tuple[Crate, int, bool] | None:
+        x = self._next_chessboard_x()
+        for left_wall in self._chessboard_side_order():
+            best: tuple[float, Crate] | None = None
+            for crate in remaining:
+                if crate.height_cm > self.trailer.height_cm or not self._weight_ok(crate.weight_kg):
+                    continue
+                if x + crate.length_cm > self.grid_l:
+                    continue
+                if not self._chessboard_fits(crate, x, left_wall):
+                    continue
+                score = self._score_position(crate.weight_kg, x, crate.length_cm)
+                if best is None or score > best[0]:
+                    best = (score, crate)
+            if best is not None:
+                _, crate = best
+                return crate, x, left_wall
+        return None
+
+    def _has_chessboard_slot(self, crate: Crate) -> bool:
+        if crate.height_cm > self.trailer.height_cm or not self._weight_ok(crate.weight_kg):
+            return False
+        for x in range(0, self.grid_l - crate.length_cm + 1):
+            if self._chessboard_fits(crate, x, True) or self._chessboard_fits(crate, x, False):
+                return True
+        return False
 
     def _record_weight(self, weight: float, x: int, length: int, y: int, width: int) -> None:
         center_y = y + width / 2
@@ -196,23 +270,15 @@ class TrailerLoadPlanner:
             return False
         new_left = self.left_weight + c1.weight_kg
         new_right = self.right_weight + c2.weight_kg
+        if new_left == 0 or new_right == 0:
+            return True
         return _balance_ratio(new_left, new_right) <= self.balance_tolerance
-
-    def _single_fits(self, crate: Crate, x: int, y: int) -> bool:
-        if not self._region_free(x, y, crate.length_cm, crate.width_cm):
-            return False
-        center_y = y + crate.width_cm / 2
-        return self._projected_balance_ok(crate.weight_kg, center_y)
 
     def _find_best_pair(self, remaining: list[Crate]) -> tuple[Crate, Crate, int] | None:
         best: tuple[float, Crate, Crate, int] | None = None
         for i, c1 in enumerate(remaining):
             for c2 in remaining[i + 1 :]:
-                if c1.width_cm + c2.width_cm > self.grid_w:
-                    continue
-                if c1.height_cm > self.trailer.height_cm or c2.height_cm > self.trailer.height_cm:
-                    continue
-                if not self._weight_ok(c1.weight_kg + c2.weight_kg):
+                if not self._can_pair(c1, c2) or not self._weight_ok(c1.weight_kg + c2.weight_kg):
                     continue
                 row_length = max(c1.length_cm, c2.length_cm)
                 for x in range(self.grid_l - row_length, -1, -1):
@@ -226,70 +292,33 @@ class TrailerLoadPlanner:
         _, c1, c2, x = best
         return c1, c2, x
 
-    def _find_best_single(self, remaining: list[Crate]) -> tuple[Crate, int, int] | None:
-        best: tuple[float, Crate, int, int] | None = None
-        for crate in remaining:
-            if crate.height_cm > self.trailer.height_cm or not self._weight_ok(crate.weight_kg):
-                continue
-            for x in range(self.grid_l - crate.length_cm, -1, -1):
-                for y in range(0, self.grid_w - crate.width_cm + 1):
-                    if not self._single_fits(crate, x, y):
-                        continue
-                    score = self._score_position(crate.weight_kg, x, crate.length_cm)
-                    if best is None or score > best[0]:
-                        best = (score, crate, x, y)
-        if best is None:
-            return None
-        _, crate, x, y = best
-        return crate, x, y
-
-    def _placement_options(self, crate: Crate, remaining: list[Crate]) -> int:
-        if crate.height_cm > self.trailer.height_cm or not self._weight_ok(crate.weight_kg):
-            return 0
-        for x in range(self.grid_l - crate.length_cm + 1):
-            for y in range(0, self.grid_w - crate.width_cm + 1):
-                if self._single_fits(crate, x, y):
-                    return 1
-        for other in remaining:
-            if other is crate or crate.width_cm + other.width_cm > self.grid_w:
-                continue
-            if not self._weight_ok(crate.weight_kg + other.weight_kg):
-                continue
-            row_length = max(crate.length_cm, other.length_cm)
-            for x in range(self.grid_l - row_length + 1):
-                if self._pair_fits(crate, other, x) or self._pair_fits(other, crate, x):
-                    return 1
-        return 0
-
     def plan(self, crates: Iterable[Crate], sort_key) -> LoadResult:
         remaining = sorted(list(crates), key=sort_key)
         overflow: list[str] = []
 
+        # Phase 1: pair crates that fit side-by-side (left + right walls).
         while remaining:
             pair = self._find_best_pair(remaining)
-            if pair is not None:
-                c1, c2, x = pair
-                y_left, y_right = 0, self.grid_w - c2.width_cm
-                self._mark(x, y_left, c1.length_cm, c1.width_cm, c1)
-                self._mark(x, y_right, c2.length_cm, c2.width_cm, c2)
-                remaining.remove(c1)
-                remaining.remove(c2)
-                continue
+            if pair is None:
+                break
+            c1, c2, x = pair
+            self._mark(x, 0, c1.length_cm, c1.width_cm, c1)
+            self._mark(x, self.grid_w - c2.width_cm, c2.length_cm, c2.width_cm, c2)
+            remaining.remove(c1)
+            remaining.remove(c2)
 
-            single = self._find_best_single(remaining)
-            if single is not None:
-                crate, x, y = single
-                self._mark(x, y, crate.length_cm, crate.width_cm, crate)
-                remaining.remove(crate)
+        # Phase 2: chessboard — unpaired crates hug left or right wall, alternating rows.
+        while remaining:
+            placement = self._find_best_chessboard(remaining)
+            if placement is None:
+                stuck = next((c for c in remaining if not self._has_chessboard_slot(c)), remaining[0])
+                overflow.append(stuck.asset_tag)
+                remaining.remove(stuck)
                 continue
-
-            options = [(self._placement_options(c, remaining), c) for c in remaining]
-            options.sort(key=lambda t: t[0])
-            if options[0][0] == 0:
-                overflow.append(options[0][1].asset_tag)
-                remaining.remove(options[0][1])
-                continue
-            break
+            crate, x, left_wall = placement
+            self._mark(x, self._wall_y(crate, left_wall), crate.length_cm, crate.width_cm, crate)
+            remaining.remove(crate)
+            self._last_chessboard_left = left_wall
 
         for crate in remaining:
             overflow.append(crate.asset_tag)
