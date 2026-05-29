@@ -1,5 +1,4 @@
-DEVELOPMENT! NOT PRODUCTION READY
-
+> **Development status:** under active development — verify load plans before use in production.
 
 # Load Optimization
 
@@ -13,13 +12,41 @@ Crates are **never rotated**. The planner enforces **left/right weight balance**
 
 1. Reads crate dimensions and weights from an Excel file (`crate_data.xlsx`).
 2. Asks for trailer size (or uses the standard UK preset).
-3. Places crates in two phases:
-   - **Pairing** — two crates side-by-side when their combined width fits the trailer (left crate hugs the left wall, right crate hugs the right wall).
-   - **Chessboard** — remaining crates that cannot be paired are placed one per row, alternating left wall / right wall along the trailer length.
+3. Places crates in two phases, loading **from the cab end toward the doors** (heavy items first at the cab):
+   - **Pairing** — two crates side-by-side when their combined width fits the trailer (left crate on the left wall, right crate on the right wall, same row).
+   - **Chessboard** — remaining crates that cannot be paired go on the **left or right wall only**, one per row, alternating sides as rows step toward the doors.
 4. Prints a load report and saves a PNG floor plan under `load_plans/`.
 5. Lists any crates that do not fit with **`SECOND TRAILER REQUIRED`**.
 
 Only crates that physically fit (space, height, weight limit, and balance rules) are loaded. Nothing is silently skipped.
+
+---
+
+## Quick start
+
+### Work PC (no Python, no console)
+
+Copy the **`Load Planner Package/`** folder to the target PC and double-click **`Load Planner.exe`**.
+
+See **[DEPLOY_WORK_PC.md](DEPLOY_WORK_PC.md)** for IT setup, shortcuts, and troubleshooting.
+
+### Developer machine
+
+```powershell
+cd "d:\github\Load Optimization"
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+Then either:
+
+| Method | Command / action |
+|--------|------------------|
+| **Desktop app** | Double-click `Run Load Planner.bat` |
+| **Console** | `python Load_Optimization.py` |
+| **UK quick test** | `python Load_Optimization.py --uk --name UK-01` |
+| **Build exe** | Double-click `build_exe.bat` |
 
 ---
 
@@ -28,11 +55,12 @@ Only crates that physically fit (space, height, weight limit, and balance rules)
 | Rule | Behaviour |
 |------|-----------|
 | Orientation | Fixed — length × width as stored; no turning crates |
-| Pairing | If `width₁ + width₂ ≤ trailer width`, pair on left + right walls at the same row |
-| Wide crates | Wider than half the trailer cannot pair; they use chessboard placement |
-| Chessboard | Left wall (`y = 0`) and right wall (`y = trailer width − crate width`), alternating along length |
-| Left/right balance | Loaded weight imbalance must stay within **10%** (configurable via `BALANCE_TOLERANCE` in code) |
+| Pairing | If `width₁ + width₂ ≤ trailer width`, pair on left + right walls in the same row |
+| Unpaired / wide crates | No partner with combined width ≤ trailer width → chessboard (one crate per row on a wall) |
+| Chessboard | Left wall (`y = 0`) or right wall (`y = trailer width − crate width`); rows alternate L/R; each row steps **toward the doors** from the cab |
+| Left/right balance | Final loaded weight imbalance must stay within **10%** (`BALANCE_TOLERANCE` in code) |
 | Cab weight | Heavier crates are preferentially placed toward the **cab end** when scoring positions |
+| Mixed loads | Narrow crates pair first; remaining wide crates continue in chessboard on the same trailer |
 | Height | Crates taller than the trailer are excluded and listed as skipped |
 | Weight | Total loaded weight must not exceed the trailer maximum |
 
@@ -45,42 +73,17 @@ Viewed from the **rear doors**, facing the **cab**:
 ```
   Doors (rear)                              Cab / driver
        x = 0  ──────────────────────────────────────►  x = length
-       
+
        y = 0 (left wall)  ·····················  y = width (right wall)
 ```
 
-- **x** — length along the trailer (loading end → cab).
-- **y** — width across the trailer (left → right).
-
-Wide crates on adjacent chessboard rows use **staggered x positions** (each row starts where the previous row ended) so they do not overlap in the middle of the trailer.
-
----
-
-## Requirements
-
-- Python 3.10+ recommended
-- Dependencies in `requirements.txt`
-
-### Install
-
-```powershell
-cd "d:\github\Load Optimization"
-python -m venv .venv
-.\.venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-For generating test data with `dummy_generator.py`, also install Faker:
-
-```powershell
-pip install faker
-```
+Chessboard rows use **staggered x positions** (cab row first at `x = length − crate length`, then each next row at `min(x) − crate length`) so wide crates on opposite walls do not overlap in the centre aisle.
 
 ---
 
 ## Crate data (Excel)
 
-Default file: **`crate_data.xlsx`** in the project folder (same folder as `Load_Optimization.py`).
+Default file: **`crate_data.xlsx`** in the project folder (same folder as the exe or scripts).
 
 ### Required columns
 
@@ -93,49 +96,44 @@ Default file: **`crate_data.xlsx`** in the project folder (same folder as `Load_
 
 **Option A — separate columns (recommended for production)**
 
-- `Length (cm)`
-- `Width (cm)`
-- `Height (cm)`
+- `Length (cm)`, `Width (cm)`, `Height (cm)`
 
 **Option B — single size string**
 
-- `Size (cm)` in the form **`length x width x height`** (e.g. `147x131x257`)
+- `Size (cm)` as **`length x width x height`** (e.g. `147x131x257`)
 
 Length runs along the trailer (door to cab). Width runs across the trailer. Height is vertical clearance.
 
-### Optional columns
-
-Other columns (e.g. `Crate ID`, `Crate Type`, `Location`) are ignored by the planner but can stay in the sheet for your own records.
+Other columns (`Crate ID`, `Crate Type`, `Location`, etc.) are ignored by the planner.
 
 ---
 
 ## Running the planner
 
-### Interactive (custom or UK trailer)
+### Desktop app (recommended for users)
+
+Double-click **`Run Load Planner.bat`** (requires `.venv` on the machine) or **`Load Planner.exe`** from the deploy package.
+
+The window lets you set trailer name, UK standard or custom dimensions, browse for Excel, run the plan, and open the latest plot.
+
+### Console (developers / testing)
 
 ```powershell
 python Load_Optimization.py
 ```
 
-You will be prompted for:
+Prompts:
 
-1. **Trailer / load name** — e.g. `UK`, `INT`, `DUB`. Used in the report title and PNG filename so plots are identifiable.
-2. **Use standard UK trailer? [Y/n]**
-   - **Y** or **Enter** → UK preset (below).
-   - **n** → enter your own length, width, height, and max weight. UK values appear in brackets as defaults; press Enter to keep a default or type a new value.
+1. **Trailer / load name** — e.g. `UK-01`, `UK-WIDE` (used on plots and in filenames).
+2. **Use standard UK trailer? [Y/n]** — **Y** or Enter for the preset; **n** for custom sizes (UK values shown as defaults).
 
-### Quick UK test (no prompts)
+Quick UK run without prompts:
 
 ```powershell
-python Load_Optimization.py --uk --name UK-TEST
+python Load_Optimization.py --uk --name UK-01
 ```
 
-| Flag | Purpose |
-|------|---------|
-| `--uk` | Use standard UK dimensions without asking |
-| `--name UK-TEST` | Trailer label on the plot and in the filename |
-
-### Standard UK trailer (testing)
+### Standard UK trailer
 
 | Dimension | Value |
 |-----------|--------|
@@ -148,32 +146,42 @@ python Load_Optimization.py --uk --name UK-TEST
 
 ## Output
 
-### Console report
+### Console / app report
 
 - Trailer name and dimensions
 - Crates skipped (too tall)
-- Count loaded vs total
-- Asset tags loaded
-- Total weight, left/right split, imbalance %
+- Count loaded vs total and asset tags
+- Total weight, left/right split, imbalance % (with 10% limit shown)
 - Weight toward cab vs doors
-- **`SECOND TRAILER REQUIRED`** — asset tags that need a follow-up load
+- **`SECOND TRAILER REQUIRED`** — asset tags for a follow-up load
 
-### Floor plan image
-
-Saved to:
+### Floor plan PNG
 
 ```
 load_plans/load_plan_<trailer-name>_<timestamp>.png
 ```
 
-The image includes:
+Includes trailer outline, crate positions, cab/door labels, and a summary box.
 
-- Trailer outline and each crate (with shortened asset tag)
-- **Cab / driver** and **Doors (rear)** labels
-- Title with trailer name and dimensions
-- Summary box (crate count, weights, cab/door split)
+---
 
-Share the PNG file so others can see which trailer the layout refers to without re-running the script.
+## Building the standalone app
+
+From the project folder (path must not break — the batch file handles spaces in `Load Optimization`):
+
+```cmd
+build_exe.bat
+```
+
+This will:
+
+1. Install dependencies and PyInstaller (if needed)
+2. Build **`dist\Load Planner.exe`**
+3. Copy the exe (and `crate_data.xlsx`) into **`Load Planner Package/`** — the folder to distribute
+
+If the build fails, the script stops and does **not** copy an old exe.
+
+**Deploy to work PCs:** copy the entire **`Load Planner Package/`** folder.
 
 ---
 
@@ -183,12 +191,7 @@ Share the PNG file so others can see which trailer the layout refers to without 
 python dummy_generator.py
 ```
 
-Creates or overwrites `crate_data.xlsx` with 25 random crates (fixed seed for repeatability). Adjust `crate_sizes` and weight ranges in the script for different test scenarios.
-
-Example scenarios you can model by editing the generator or Excel file:
-
-- **Mixed widths** — some crates pair side-by-side, others use chessboard.
-- **All wide** — every crate wider than half the trailer; only chessboard rows (no pairing).
+Creates or overwrites `crate_data.xlsx` with 25 random crates (~800–900 kg). Default sizes mix **narrow** crates (e.g. 161×111 cm — can pair two across) and **wide** crates (~131 cm width — chessboard only). Edit `crate_sizes` in the script to test all-wide or all-narrow scenarios.
 
 ---
 
@@ -196,57 +199,53 @@ Example scenarios you can model by editing the generator or Excel file:
 
 ```
 Load Optimization/
-├── Load_Optimization.py   # Main planner
-├── dummy_generator.py     # Optional test Excel generator
-├── crate_data.xlsx        # Input data (your real or test crates)
-├── requirements.txt       # Python dependencies
-├── load_plans/             # Output PNG floor plans (created on run)
-└── README.md
+├── Load_Optimization.py      # Core planner
+├── load_planner_gui.py       # Desktop UI
+├── dummy_generator.py        # Test Excel generator
+├── Run Load Planner.bat      # Launch GUI (dev, uses .venv)
+├── build_exe.bat             # Build exe + refresh deploy package
+├── crate_data.xlsx           # Input data
+├── requirements.txt
+├── load_plans/               # Generated PNG floor plans
+├── Load Planner Package/     # Ready-to-copy deploy folder (exe + data)
+├── README.md
+├── DEPLOY_WORK_PC.md         # IT / work PC guide
+└── LICENSE
 ```
+
+Generated by builds (gitignored): `build/`, `dist/`, `Load Planner.spec`.
 
 ---
 
 ## How the algorithm works
 
-```mermaid
-flowchart TD
-    A[Read Excel + trailer spec] --> B[Remove crates over max height]
-    B --> C[Phase 1: Pair crates where width1 + width2 fits]
-    C --> D[Place pairs: left wall y=0, right wall y=W-w2]
-    D --> E[Phase 2: Chessboard for remaining crates]
-    E --> F[Alternate L/R walls along length]
-    F --> G{More crates?}
-    G -->|fits| F
-    G -->|no space| H[SECOND TRAILER REQUIRED list]
-    G -->|done| I[Print report + save PNG]
-```
-
 **Phase 1 — Pairing**  
-Among remaining crates, the planner searches for the best pair that fits side-by-side, respects the weight limit, and keeps left/right balance within tolerance. Pairs are placed with the heavier-combined row preferentially toward the cab when possible.
+Find the best pair that fits side-by-side on the walls (space, height, weight limit, and left/right balance). Heavier pairs are preferentially placed toward the cab. Repeat until no pair fits.
 
 **Phase 2 — Chessboard**  
-Each remaining crate is placed on **only** the left or right wall. Rows advance along **x** so wide crates do not overlap. The planner alternates sides row-by-row and allows brief imbalance mid-sequence when the next row restores balance (typical for similar-weight wide crates).
+Each remaining crate goes on the **left or right wall only**, one per row. Rows fill **cab → doors**. Sides alternate row-by-row (strict L/R/L/R… or R/L/R/L… — the planner picks whichever start side gives better balance).
+
+When choosing a crate for each row, the planner **forecasts final left/right balance** (assigning heavier remaining crates to the side with fewer rows in the pattern) and picks the option with the lowest projected imbalance, then cab-weight bias as tie-breaker.
+
+Brief imbalance mid-load is allowed when the next row is on the opposite wall. The first chessboard row after pairing is always permitted so alternation can begin even when pairs already loaded both sides.
+
+**Typical outcomes**
+
+| Crate mix | Behaviour |
+|-----------|-----------|
+| Mostly narrow (pairs fit) | Several pair rows at the cab, then chessboard for leftovers |
+| All wide (no pairs) | Chessboard only — often 8–9 rows on a 1360 cm UK trailer |
+| Overflow | Length, height, weight, or balance rules block further crates → **SECOND TRAILER REQUIRED** |
 
 ---
 
-## Custom trailer sizes
+## Limitations
 
-You are not limited to the UK preset.
-
-- Run `python Load_Optimization.py` and answer **n** at the UK prompt, then enter length, width, height, and max weight; or
-- Use the UK values as defaults and change only what you need (e.g. longer INT length, different weight limit).
-
-The same pairing and chessboard logic applies to any dimensions you enter.
-
----
-
-## Limitations and expectations
-
-- **Greedy planner** — good operational layouts, not a guarantee of mathematically optimal packing.
-- **1 cm grid** — dimensions are rounded up to whole centimetres for placement.
-- **Single trailer per run** — overflow crates are reported for a **second trailer**; run the tool again with only those crates if you want a separate plan.
-- **Runtime** — depends on crate count and trailer size (roughly tens of seconds for ~25 crates on a fine grid).
-- **Balance tolerance** — default 10%; change `BALANCE_TOLERANCE` at the top of `Load_Optimization.py` if your site rules differ.
+- Greedy planner — good operational layouts, not guaranteed optimal packing or minimum trailer count.
+- Odd chessboard row counts (e.g. 9 rows) need uneven left/right weight to stay within 10%; the planner optimises for this but cannot always load every crate.
+- 1 cm grid — dimensions rounded up to whole centimetres.
+- One trailer per run — overflow crates need a second run or trailer.
+- Balance tolerance default 10% — change `BALANCE_TOLERANCE` in `Load_Optimization.py` if needed.
 
 ---
 
@@ -254,45 +253,39 @@ The same pairing and chessboard logic applies to any dimensions you enter.
 
 | Issue | What to check |
 |-------|----------------|
-| `ModuleNotFoundError: openpyxl` | Run `pip install -r requirements.txt` |
-| `ModuleNotFoundError: faker` | Run `pip install faker` before `dummy_generator.py` |
-| Many crates in overflow | Trailer may be full; verify dimensions and weights in Excel |
-| All crates skipped | Heights in Excel may exceed trailer height |
-| Wrong layout shape | Confirm `Size (cm)` order is **length x width x height** |
-| Plot not found | Look in `load_plans/` under the project folder |
-
----
-
-## Running on a work PC (no VS Code, no console)
-
-For warehouse or office PCs without developer tools, use the **desktop app**:
-
-1. Double-click **`Run Load Planner.bat`** — opens a normal Windows window.
-2. Or ask IT to build **`Load Planner.exe`** once with `build_exe.bat` and copy it to PCs that do not have Python.
-
-Full deployment steps (IT checklist, shortcuts, troubleshooting): **[DEPLOY_WORK_PC.md](DEPLOY_WORK_PC.md)**
+| `ModuleNotFoundError: openpyxl` | `pip install -r requirements.txt` |
+| `build_exe.bat` path error | Use the updated script (`%CD%` paths); folder name can contain spaces |
+| Build succeeded but old exe | Script now fails loudly if PyInstaller errors |
+| Only pairs loaded, door end empty | Rebuild from current code — chessboard must run after pairing |
+| High left/right imbalance | Odd row count (e.g. 9 chessboard rows) needs heavier crates on the side with **fewer** rows; re-run with latest planner |
+| Many crates in overflow | Trailer may be full — expected; use second trailer list |
+| Wrong layout shape | Confirm `Size (cm)` is **length x width x height** |
+| Plot not found | Check `load_plans/` next to the exe or script |
 
 ---
 
 ## Example commands
 
 ```powershell
-# Full interactive run with custom trailer
+# Desktop app (dev)
+Run Load Planner.bat
+
+# Console — custom trailer
 python Load_Optimization.py
 
-# Standard UK trailer, named plot
-python Load_Optimization.py --uk --name UK-01
+# Console — UK preset
+python Load_Optimization.py --uk --name UK-WIDE
 
-# Regenerate test Excel, then plan
+# Regenerate test data, then plan
 python dummy_generator.py
 python Load_Optimization.py --uk --name UK-WIDE
+
+# Rebuild deploy package
+build_exe.bat
 ```
-
----
-
 
 ---
 
 ## License
 
-Please see **`LICENSE`**
+See **`LICENSE`**.

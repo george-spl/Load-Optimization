@@ -1,25 +1,50 @@
 @echo off
-REM Build a standalone Load Planner.exe (run once on a dev machine, then copy the folder to work PCs).
+REM Build Load Planner.exe and copy into "Load Planner Package" for work PCs.
 cd /d "%~dp0"
+set "ROOT=%CD%"
 
-if not exist ".venv\Scripts\python.exe" (
+if not exist "%ROOT%\.venv\Scripts\python.exe" (
     echo Create the venv first: python -m venv .venv
+    echo .venv\Scripts\pip install -r requirements.txt
     pause
     exit /b 1
 )
 
-call .venv\Scripts\activate.bat
-pip install -r requirements.txt pyinstaller
+call "%ROOT%\.venv\Scripts\activate.bat"
+pip install -r requirements.txt pyinstaller -q
 
 pyinstaller --noconfirm --onefile --windowed ^
   --name "Load Planner" ^
-  --paths "%~dp0" ^
-  "%~dp0load_planner_gui.py"
+  --paths "%ROOT%" ^
+  "%ROOT%\load_planner_gui.py"
+
+if errorlevel 1 (
+    echo.
+    echo Build FAILED. Load Planner.exe was not created.
+    pause
+    exit /b 1
+)
+
+if not exist "%ROOT%\dist\Load Planner.exe" (
+    echo.
+    echo Build FAILED: dist\Load Planner.exe not found.
+    pause
+    exit /b 1
+)
+
+set "PKG=%ROOT%\Load Planner Package"
+mkdir "%PKG%" 2>nul
+mkdir "%PKG%\load_plans" 2>nul
+copy /Y "%ROOT%\dist\Load Planner.exe" "%PKG%\"
+if exist "%ROOT%\crate_data.xlsx" copy /Y "%ROOT%\crate_data.xlsx" "%PKG%\"
 
 echo.
-echo Build finished. Copy this folder to work PCs:
-echo   dist\Load Planner.exe
+echo Build succeeded.
+echo Ready to copy to work PCs:
+echo   %PKG%
+echo.
+echo   Load Planner.exe
 echo   crate_data.xlsx
-echo   load_plans\   (empty folder is fine)
+echo   load_plans\
 echo.
 pause

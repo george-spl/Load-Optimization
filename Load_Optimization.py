@@ -6,7 +6,8 @@ Coordinate system (shown on the plot):
   - x = length: cab end (toward the tractor / driver)
   - y = 0: left side, y = width: right side (viewed from the rear, facing the cab)
 
-Crates are never rotated. Left/right balance and weight toward the cab are enforced.
+Crates are never rotated. Left/right balance is enforced.
+Loading fills from the cab end toward the doors (heavy items first at the cab).
 """
 
 from __future__ import annotations
@@ -139,6 +140,33 @@ class TrailerLoadPlanner:
         self.door_weight = 0.0
         self.loaded_weight = 0.0
         self._last_chessboard_left: bool | None = None
+        self._chessboard_starts_left: bool | None = None
+        self._chessboard_rows_placed: int = 0
+
+    def _left_row_count(self) -> int:
+        return sum(1 for p in self.placements if p.y == 0)
+
+    def _right_row_count(self) -> int:
+        return len(self.placements) - self._left_row_count()
+
+    def _estimate_chessboard_rows(self, remaining: list[Crate]) -> int:
+        """Estimate total chessboard rows (placed + still possible)."""
+        door_x = min((p.x for p in self.placements), default=self.grid_l)
+        budget = door_x
+        used = 0
+        extra = 0
+        for crate in sorted(remaining, key=lambda c: c.length_cm):
+            if used + crate.length_cm > budget:
+                break
+            used += crate.length_cm
+            extra += 1
+        return self._chessboard_rows_placed + max(extra, 1)
+
+    @staticmethod
+    def _side_slot_counts(starts_left: bool, n_rows: int) -> tuple[int, int]:
+        if starts_left:
+            return (n_rows + 1) // 2, n_rows // 2
+        return n_rows // 2, (n_rows + 1) // 2
 
     def _region_free(self, x: int, y: int, length: int, width: int) -> bool:
         if x < 0 or y < 0:
@@ -176,6 +204,9 @@ class TrailerLoadPlanner:
             return True
         if self._last_chessboard_left is not None and left_wall != self._last_chessboard_left:
             return True
+        # First chessboard row after pairing: both sides already loaded; alternation follows.
+        if self._chessboard_rows_placed == 0:
+            return True
         return False
 
     def _chessboard_fits(self, crate: Crate, x: int, left_wall: bool) -> bool:
@@ -184,46 +215,124 @@ class TrailerLoadPlanner:
             return False
         return self._chessboard_balance_ok(crate.weight_kg, left_wall)
 
-    def _next_chessboard_x(self) -> int:
+    def _next_chessboard_x(self, crate_length: int) -> int | None:
+        """Next row when loading cab → doors: first row at the cab, then toward x = 0."""
         if not self.placements:
-            return 0
-        return max(p.x + p.length_cm for p in self.placements)
+            x = self.grid_l - crate_length
+            return x if x >= 0 else None
+        x = min(p.x for p in self.placements) - crate_length
+        return x if x >= 0 else None
 
     def _next_chessboard_side(self) -> bool:
         if self._last_chessboard_left is None:
             return True
         return not self._last_chessboard_left
 
-    def _chessboard_side_order(self) -> list[bool]:
-        if self.left_weight > self.right_weight:
-            return [False, True]
-        if self.right_weight > self.left_weight:
-            return [True, False]
-        return [self._next_chessboard_side(), not self._next_chessboard_side()]
+    @staticmethod
+    def _remaining_side_order(starts_left: bool, rows_done: int, rows_left: int) -> list[bool]:
+        left = starts_left
+        for _ in range(rows_done):
+            left = not left
+        order: list[bool] = []
+        for _ in range(rows_left):
+            order.append(left)
+            left = not left
+        return order
+
+    def _forecast_balance(
+        self,
+        crate: Crate,
+        left_wall: bool,
+        remaining: list[Crate],
+        starts_left: bool,
+    ) -> float:
+        """Estimate final L/R imbalance after placing crate and filling remaining rows."""
+        new_left = self.left_weight + (crate.weight_kg if left_wall else 0)
+        new_right = self.right_weight + (crate.weight_kg if not left_wall else 0)
+        others = [c for c in remaining if c is not crate]
+
+        n_total = self._estimate_chessboard_rows(remaining)
+        rows_done = self._chessboard_rows_placed + 1
+        rows_left = max(n_total - rows_done, 0)
+        side_order = self._remaining_side_order(starts_left, rows_done, rows_left)
+
+        if not side_order or not others:
+            return _balance_ratio(new_left, new_right)
+
+        left_idx = [i for i, s in enumerate(side_order) if s]
+        right_idx = [i for i, s in enumerate(side_order) if not s]
+        minority_left = len(left_idx) < len(right_idx)
+        heavy = sorted(others, key=lambda c: c.weight_kg, reverse=True)
+        light = list(reversed(heavy))
+        assign: dict[int, float] = {}
+
+        if minority_left:
+            for i, idx in enumerate(left_idx):
+                if i < len(heavy):
+                    assign[idx] = heavy[i].weight_kg
+            for i, idx in enumerate(right_idx):
+                if i < len(light):
+                    assign[idx] = light[i].weight_kg
+        else:
+            for i, idx in enumerate(right_idx):
+                if i < len(heavy):
+                    assign[idx] = heavy[i].weight_kg
+            for i, idx in enumerate(left_idx):
+                if i < len(light):
+                    assign[idx] = light[i].weight_kg
+
+        for idx, weight in assign.items():
+            if side_order[idx]:
+                new_left += weight
+            else:
+                new_right += weight
+
+        return _balance_ratio(new_left, new_right)
+
+    def _score_chessboard(
+        self,
+        crate: Crate,
+        x: int,
+        left_wall: bool,
+        remaining: list[Crate],
+        starts_left: bool,
+    ) -> tuple[float, float]:
+        """Lower is better: forecast final imbalance, then cab bias."""
+        balance = self._forecast_balance(crate, left_wall, remaining, starts_left)
+        cab = self._score_position(crate.weight_kg, x, crate.length_cm)
+        return (balance, -cab)
 
     def _find_best_chessboard(self, remaining: list[Crate]) -> tuple[Crate, int, bool] | None:
-        x = self._next_chessboard_x()
-        for left_wall in self._chessboard_side_order():
-            best: tuple[float, Crate] | None = None
+        """Place one row on the alternating wall only (chessboard pattern)."""
+        if self._last_chessboard_left is None:
+            sides = (True, False)
+        else:
+            sides = (self._next_chessboard_side(),)
+        best: tuple[tuple[float, float], Crate, int, bool] | None = None
+        for left_wall in sides:
+            starts_left = (
+                left_wall if self._chessboard_starts_left is None else self._chessboard_starts_left
+            )
             for crate in remaining:
                 if crate.height_cm > self.trailer.height_cm or not self._weight_ok(crate.weight_kg):
                     continue
-                if x + crate.length_cm > self.grid_l:
+                x = self._next_chessboard_x(crate.length_cm)
+                if x is None:
                     continue
                 if not self._chessboard_fits(crate, x, left_wall):
                     continue
-                score = self._score_position(crate.weight_kg, x, crate.length_cm)
-                if best is None or score > best[0]:
-                    best = (score, crate)
-            if best is not None:
-                _, crate = best
-                return crate, x, left_wall
-        return None
+                score = self._score_chessboard(crate, x, left_wall, remaining, starts_left)
+                if best is None or score < best[0]:
+                    best = (score, crate, x, left_wall)
+        if best is None:
+            return None
+        _, crate, x, left_wall = best
+        return crate, x, left_wall
 
     def _has_chessboard_slot(self, crate: Crate) -> bool:
         if crate.height_cm > self.trailer.height_cm or not self._weight_ok(crate.weight_kg):
             return False
-        for x in range(0, self.grid_l - crate.length_cm + 1):
+        for x in range(self.grid_l - crate.length_cm, -1, -1):
             if self._chessboard_fits(crate, x, True) or self._chessboard_fits(crate, x, False):
                 return True
         return False
@@ -307,7 +416,7 @@ class TrailerLoadPlanner:
             remaining.remove(c1)
             remaining.remove(c2)
 
-        # Phase 2: chessboard — unpaired crates hug left or right wall, alternating rows.
+        # Phase 2: chessboard — cab toward doors, alternating left/right walls.
         while remaining:
             placement = self._find_best_chessboard(remaining)
             if placement is None:
@@ -316,9 +425,12 @@ class TrailerLoadPlanner:
                 remaining.remove(stuck)
                 continue
             crate, x, left_wall = placement
+            if self._chessboard_starts_left is None:
+                self._chessboard_starts_left = left_wall
             self._mark(x, self._wall_y(crate, left_wall), crate.length_cm, crate.width_cm, crate)
             remaining.remove(crate)
             self._last_chessboard_left = left_wall
+            self._chessboard_rows_placed += 1
 
         for crate in remaining:
             overflow.append(crate.asset_tag)

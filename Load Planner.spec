@@ -2,8 +2,8 @@
 
 
 a = Analysis(
-    ['load_planner_gui.py'],
-    pathex=[],
+    ['D:\\github\\Load Optimization\\load_planner_gui.py'],
+    pathex=['D:\\github\\Load Optimization'],
     binaries=[],
     datas=[],
     hiddenimports=[],
