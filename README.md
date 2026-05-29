@@ -1,3 +1,6 @@
+DEVELOPMENT! NOT PRODUCTION READY
+
+
 # Load Optimization
 
 A Python tool for planning how heavy crates are loaded onto truck trailers. It produces a console report and a labelled floor-plan image so multiple people can see **which trailer** a layout belongs to and **what still needs a second trailer**.
