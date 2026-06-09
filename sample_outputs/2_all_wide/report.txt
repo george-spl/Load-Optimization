@@ -1,0 +1,40 @@
+--- Load plan: UK-ALL-WIDE ---
+Trailer: 1360 x 240 x 270 cm
+Weight limit: 26000 kg
+
+Crates loaded: 9 / 25
+Loaded asset tags:
+  d8448135-1816-4a59-8fa0-448eade3702d
+  a6561be6-eecb-4547-a76b-b9c89599bc3d
+  c33f4584-b23b-41d8-893c-d01609de8895
+  944ae60b-0c86-410e-9043-9bde607e2b46
+  0ec69d37-2d1a-49ea-a4d8-f3636f1f16f1
+  9be6a8ea-7f8e-44c2-994b-7a5674043590
+  e05adc18-0cd3-4c52-91cd-827dc7e6c971
+  939d61dc-6eb1-48e2-839a-a6b004e77af5
+  70547e0b-b37e-4754-aa03-203287656d8e
+
+Total weight loaded: 7587.56 kg
+Left: 4042.25 kg | Right: 3545.31 kg
+Left/right imbalance: 6.5% (limit 10%)
+Cab end (toward driver): 4196.09 kg
+Door end (rear): 3391.47 kg
+
+*** SECOND TRAILER REQUIRED ***
+16 crate(s) could not fit on this trailer (UK-ALL-WIDE). Load these on a follow-up trailer:
+  1484cf3f-d92e-4a26-a057-b0de2ab49ae1
+  1fe2a062-d1f9-4ffa-9b78-4c44d9d2f5ed
+  9f9f243f-85b2-4ac3-93b9-3773e38544f3
+  0fb87e07-f120-486b-afc6-499d0fab80c5
+  5eb04521-7668-4387-b59b-a79924d8cea5
+  4678b59a-4bd1-40b4-aa6d-06f0d6cf23c0
+  20f2c360-7ef8-4d5b-95a2-5c02832ea288
+  18a61865-cafe-4acf-b2cc-dfa7abf10ac2
+  d0469667-db0e-4e65-bcfc-bc361a60e033
+  f362b708-c15c-41bf-a2f2-34308c072307
+  291e1aa6-1882-4eed-a749-ac5860383fa0
+  fa6b594e-98e3-4528-a308-b85bc5b58496
+  2e8d0bb3-933d-4d81-859d-990181b584eb
+  f275418c-da2f-466e-9fdf-e1685f53f26c
+  a5ab4237-c971-4e97-b519-8c349f6c6415
+  5486d496-54ce-4017-b930-7855e61f2da4

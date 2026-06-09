@@ -1,0 +1,40 @@
+--- Load plan: UK-ALL-NORMAL ---
+Trailer: 1360 x 240 x 270 cm
+Weight limit: 26000 kg
+
+Crates loaded: 16 / 25
+Loaded asset tags:
+  ae0b60fd-d113-4b9a-b5e8-04cfac78b489
+  4a2a3e41-f835-4314-9263-3d6da014c5d4
+  19a56746-0241-45e4-9195-9d9d1ddccf2d
+  a24eb80d-b189-4370-8d90-437bfd4f6854
+  268cdc62-8a60-4252-8d4d-6762970882be
+  18873255-62c8-44c1-9834-7f9608f5fa74
+  39850d17-0772-4aea-8a21-229039a40dfe
+  5bb88633-537c-4792-ab87-55c5b0f9aafc
+  bd15349c-09af-4530-b5b9-80156fb59ea3
+  0b1f331b-0c98-4e86-86cc-ac693f7a9c53
+  4860f7d0-d76e-4b6f-96bc-f77c12d465da
+  feb9a31c-af0a-46c8-bc93-5110cb477e85
+  612b6cd5-2d39-45ab-9ddd-2106dcae6e9f
+  5e9879ff-5422-47bb-8fbe-5628a7483d73
+  b39cfd4b-8abe-4d78-8520-10116895cea8
+  451ed237-1839-42d2-96af-b86411efe3fd
+
+Total weight loaded: 13369.52 kg
+Left: 6692.01 kg | Right: 6677.51 kg
+Left/right imbalance: 0.1% (limit 10%)
+Cab end (toward driver): 6792.54 kg
+Door end (rear): 6576.98 kg
+
+*** SECOND TRAILER REQUIRED ***
+9 crate(s) could not fit on this trailer (UK-ALL-NORMAL). Load these on a follow-up trailer:
+  c41edca6-67b1-4551-974b-975360e09044
+  b0567812-8382-456e-8642-35eb281cdb93
+  f1702cde-1b93-4513-90bf-eb96f57bfe7b
+  fe56b1e5-74a0-4625-bbc3-6d973bb70669
+  74211244-a16c-4327-b88b-78bdd49a72b4
+  82d1d170-1cac-4d0b-a8b7-65989e022098
+  d82e3ed6-bcaf-4c20-b1d8-fbc7b6ad2d73
+  30c9e507-eab9-4480-b9e2-1d297a2f15f0
+  bf4302b2-4223-453b-a14a-79023047a452
