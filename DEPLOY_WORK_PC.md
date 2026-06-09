@@ -1,6 +1,18 @@
-# Running on a work PC (no VS Code, no console)
+# Deployment Guide — Work PCs
 
-Three ways to run the tool. For most staff, use **Option 1** or **Option 2**.
+This guide explains how to **run and demonstrate** the Trailer Load Planner on a PC without Python installed.
+
+> **Note:** The packaged `.exe` exists so the **proof of concept can be shown easily** (e.g. in an interview or demo). It is not an endorsement of immediate operational rollout. See **[README.md](README.md)** for project intent and limitations.
+
+---
+
+## Who this guide is for
+
+- **Warehouse / logistics staff** — run load plans from Excel without using a command line.
+- **IT support** — install or update the application on locked-down PCs.
+- **Reviewers** — understand how the packaged app relates to the source project.
+
+The packaged application (`Load Planner.exe`) is built from the Python source using **PyInstaller**, with packaging support from a **Cursor AI agent**. End users do not need Python installed.
 
 ---
 
@@ -10,30 +22,30 @@ Copy this folder to a network drive or each PC:
 
 ```
 Load Planner Package/
-├── Load Planner.exe      ← double-click this
+├── Load Planner.exe      ← double-click to run
 ├── crate_data.xlsx       ← replace with your export
-├── load_plans/           ← plots save here
+├── load_plans/           ← floor-plan PNGs save here
 └── README.txt
 ```
 
-### What users do
+### User steps
 
 1. Double-click **`Load Planner.exe`**.
-2. Enter a trailer name (e.g. `UK-01`, `UK-WIDE`).
+2. Enter a trailer / load name (e.g. `UK-01`) — this appears on the plot and in filenames.
 3. Tick **Standard UK trailer** or enter custom dimensions.
 4. Select the Excel file (**Browse** if not using `crate_data.xlsx` in this folder).
 5. Click **Run load plan**.
 6. Click **Open latest plot** or **Open load_plans folder**.
 
-No Python, VS Code, or command window required.
+No Python, IDE, or command window is required.
 
 ### Updating crate data
 
-Replace **`crate_data.xlsx`** with a new export (same column names). No reinstall needed.
+Replace **`crate_data.xlsx`** with a new export using the same column names. No reinstall is needed — open the app and run again.
 
 ---
 
-## Option 2 — Full project folder (Python on PC)
+## Option 2 — Full project folder (Python available)
 
 Use when IT allows Python but users should not use a console.
 
@@ -48,16 +60,16 @@ Load Optimization/
 └── .venv/                    ← required (see setup below)
 ```
 
-`Run Load Planner.bat` starts the GUI with `pythonw` (no black console window).
+`Run Load Planner.bat` starts the GUI with `pythonw` (no console window).
 
 ### One-time IT setup
 
-**A) Copy the project including `.venv`** from a machine where `pip install -r requirements.txt` was already run.
+**A)** Copy the project including `.venv` from a machine where dependencies are already installed.
 
-**B) Install Python on the work PC**
+**B)** Install Python on the work PC:
 
 1. Install [Python 3.10+](https://www.python.org/downloads/) — tick **Add python.exe to PATH**.
-2. In Command Prompt, from the project folder:
+2. From the project folder in Command Prompt:
 
    ```cmd
    python -m venv .venv
@@ -68,57 +80,47 @@ Load Optimization/
 
 ---
 
-## Option 3 — Console (developers / testing only)
+## Option 3 — Console (developers / testing)
 
 ```cmd
 python Load_Optimization.py
-```
-
-Or:
-
-```cmd
 python Load_Optimization.py --uk --name UK-01
 ```
 
-Not recommended for warehouse or office staff.
+Not intended for warehouse or office staff.
 
 ---
 
 ## Building the deploy package (developers)
 
-On a dev machine, from the **`Load Optimization`** project folder:
+From the **`Load Optimization`** project folder:
 
 ```cmd
 build_exe.bat
 ```
 
-Requirements:
+**Requirements:** `.venv` exists with dependencies installed. The batch file handles project paths that contain spaces.
 
-- `.venv` exists with dependencies installed
-- Project path may contain spaces (e.g. `Load Optimization`) — the batch file handles this
+**On success:**
 
-On success:
+- `dist\Load Planner.exe` — intermediate build output
+- `Load Planner Package\` — refreshed folder to copy to work PCs
 
-- **`dist\Load Planner.exe`** — intermediate build output
-- **`Load Planner Package\`** — refreshed deploy folder to copy to work PCs
-
-If PyInstaller fails, the script reports **Build FAILED** and does not copy an outdated exe.
-
-To rebuild after code changes, run `build_exe.bat` again and redistribute **`Load Planner Package/`**.
+If PyInstaller fails, the script reports **Build FAILED** and does not copy an outdated exe. After code changes, run `build_exe.bat` again and redistribute **`Load Planner Package/`**.
 
 ---
 
-## Comparison
+## Deployment comparison
 
-| Method | Python on PC? | Console? | Best for |
-|--------|---------------|----------|----------|
+| Method | Python required? | Console? | Best for |
+|--------|------------------|----------|----------|
 | `Load Planner Package/` exe | No | No | Locked-down work PCs |
-| `Run Load Planner.bat` + venv | Yes | No | Shared dev/network folder |
-| `Load_Optimization.py` | Yes | Yes | Testing / scripts |
+| `Run Load Planner.bat` + venv | Yes | No | Shared network folder |
+| `Load_Optimization.py` | Yes | Yes | Development and testing |
 
 ---
 
-## Standard UK trailer
+## Standard UK trailer preset
 
 | Dimension | Value |
 |-----------|--------|
@@ -129,10 +131,15 @@ To rebuild after code changes, run `build_exe.bat` again and redistribute **`Loa
 
 ---
 
-## Desktop shortcut (optional)
+## What the application does (summary)
 
-1. Right-click **`Load Planner.exe`** or **`Run Load Planner.bat`** → **Send to** → **Desktop (create shortcut)**.
-2. Rename to **Trailer Load Planner**.
+- Reads crate data from Excel (fixed orientation — no rotation).
+- **Pairs** crates that fit side-by-side on the left and right walls.
+- Places remaining crates in a **chessboard** pattern (one per row, alternating walls, cab → doors).
+- Enforces left/right weight balance (10% tolerance) and trailer weight limit.
+- Saves a labelled floor-plan PNG and lists crates needing a **second trailer**.
+
+**What it does not do:** rotate crates, stack in 3D, guarantee minimum trailer count, or replace qualified human review. See **[README.md](README.md)** for full scope.
 
 ---
 
@@ -140,26 +147,16 @@ To rebuild after code changes, run `build_exe.bat` again and redistribute **`Loa
 
 | Problem | Fix |
 |---------|-----|
-| “Python was not found” | Use **`Load Planner.exe`** from the deploy package, or install Python + `.venv` |
-| `build_exe.bat`: script file does not exist | Re-download `build_exe.bat` (fixed for paths with spaces); run from project folder |
-| Build says succeeded but app is old | Check for **Build FAILED** message; delete old exe and rebuild |
-| Window flashes and closes | Use **`Run Load Planner.bat`** or **`Load Planner.exe`**, not raw `python load_planner_gui.py` |
-| Excel file not found | Put `crate_data.xlsx` next to the exe, or use **Browse** in the app |
+| “Python was not found” | Use **`Load Planner.exe`** from the deploy package |
+| Excel file not found | Place `crate_data.xlsx` next to the exe, or use **Browse** |
 | Plot does not open | Click **Open load_plans folder** — the PNG is saved even if the viewer fails |
 | Windows SmartScreen warning | Unsigned exe — IT may need to allowlist **`Load Planner.exe`** |
-| All crates in overflow | Trailer may be full; check report for **SECOND TRAILER REQUIRED** list |
-| Only pairs on plot, nothing toward doors | Rebuild with latest `build_exe.bat` — chessboard phase should follow pairing |
-| Left/right imbalance over 10% in report | Rebuild with latest exe; planner forecasts balance when picking chessboard rows |
+| All crates in overflow | Trailer may be full — check **SECOND TRAILER REQUIRED** in the report |
+| Outdated behaviour after update | Rebuild with `build_exe.bat` and redistribute **`Load Planner Package/`** |
 
 ---
 
-## What the app does (brief)
+## Optional — desktop shortcut
 
-- Loads crates from Excel (fixed orientation — no rotation).
-- Fills the trailer **from the cab end toward the doors** (heavy items first at the cab).
-- **Pairs** crates that fit side-by-side on the left and right walls.
-- Places remaining **unpaired / wide** crates in a **chessboard** pattern (one per row, alternating left/right walls toward the doors).
-- Enforces left/right weight balance (10% tolerance) and trailer weight limit.
-- Saves a labelled floor-plan PNG and lists crates that need a **second trailer**.
-
-Full details: **[README.md](README.md)**
+1. Right-click **`Load Planner.exe`** → **Send to** → **Desktop (create shortcut)**.
+2. Rename to **Trailer Load Planner**.

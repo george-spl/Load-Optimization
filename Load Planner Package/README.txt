@@ -1,34 +1,50 @@
-Load Planner — work PC package
-================================
+Trailer Load Planner — Demonstration Package
+============================================
 
-Double-click Load Planner.exe to open the app.
-No Python, VS Code, or command window needed.
+Proof-of-concept desktop tool: plans crate loading on truck trailers from Excel,
+produces a report and floor-plan image.
+
+Double-click Load Planner.exe to run a demo. No Python required.
+
+
+ABOUT THIS SOFTWARE
+-------------------
+
+This is a PROOF OF CONCEPT, not production software.
+
+It was built to demonstrate that a workplace loading problem can be identified,
+broken into rules, and turned into a working prototype. Development used dummy
+/test data — not validated for live operational use.
+
+Built in Python (basic programming + tutorials). Packaged with PyInstaller;
+Cursor AI agent assisted with packaging and refinement.
+
+Do not use output as final load instructions without qualified review.
 
 
 CONTENTS
 --------
 
-  Load Planner.exe   The application
+  Load Planner.exe   Application
   crate_data.xlsx    Crate list (replace with your export)
-  load_plans/        Floor-plan PNGs are saved here
+  load_plans/        Saved floor-plan images
   README.txt         This file
 
 
 QUICK START
 -----------
 
-1. Put your crate Excel file here as crate_data.xlsx,
-   or click Browse in the app to pick another file.
+1. Place your Excel file here as crate_data.xlsx,
+   or click Browse in the app to select another file.
 
-2. Enter a trailer / load name (e.g. UK-01, UK-WIDE).
+2. Enter a trailer / load name (e.g. UK-01).
    This name appears on the plot and in the filename.
 
 3. Tick "Standard UK trailer" or enter custom dimensions.
 
 4. Click Run load plan.
 
-5. Click Open latest plot to view the layout,
-   or Open load_plans folder to see all saved PNGs.
+5. Click Open latest plot, or Open load_plans folder.
 
 
 STANDARD UK TRAILER
@@ -40,8 +56,8 @@ STANDARD UK TRAILER
   Max weight: 26,000 kg
 
 
-EXCEL FILE FORMAT
------------------
+EXCEL FORMAT
+------------
 
 Required columns:
   Asset Tag
@@ -53,40 +69,48 @@ Dimensions — either:
   Size (cm)  as  length x width x height  (e.g. 147x131x257)
 
 
-WHAT TO EXPECT
---------------
+WHAT THE TOOL DOES
+------------------
 
-  - Crates are never rotated.
-  - Loading runs cab end first, then toward the doors.
-  - Pairs load side-by-side when combined width fits the trailer.
-  - Remaining unpaired crates alternate left/right on the walls (chessboard).
-  - Left/right weight balance is kept within 10%.
-  - Crates that do not fit are listed as SECOND TRAILER REQUIRED.
-  - Plots save to load_plans/ as load_plan_<name>_<date>.png
+  - Reads crate sizes and weights from Excel
+  - Pairs crates side-by-side when they fit across the trailer width
+  - Places remaining crates alternating left/right on the walls (chessboard)
+  - Loads from the cab end toward the doors; heavier items toward the cab
+  - Keeps left/right weight balance within 10%
+  - Saves a floor-plan PNG to load_plans/
+  - Lists crates that need a second trailer
+
+
+WHAT THE TOOL DOES NOT DO
+-------------------------
+
+  - Does not rotate crates
+  - Does not stack crates vertically (2D floor plan only)
+  - Does not guarantee the optimal or minimum number of trailers
+  - Does not replace qualified human review of load plans
 
 
 UPDATING DATA
 -------------
 
 Replace crate_data.xlsx with a new export (same column names).
-No reinstall needed — open the app and run again.
+No reinstall needed.
 
 
 TROUBLESHOOTING
 ---------------
 
-  Python was not found     You do not need Python — use Load Planner.exe only.
-  Excel not found          Put crate_data.xlsx in this folder or use Browse.
-  Plot did not open        Check the load_plans folder — the PNG is saved there.
-  SmartScreen warning      Ask IT to allowlist Load Planner.exe (unsigned app).
-  Only pairs, no door rows Re-download Load Planner Package (rebuilt with build_exe.bat).
+  Python was not found     Not required — use Load Planner.exe only
+  Excel not found          Put crate_data.xlsx here or use Browse
+  Plot did not open        Check the load_plans folder
+  SmartScreen warning      Ask IT to allowlist Load Planner.exe
 
 
-FOR DEVELOPERS — REBUILD THIS PACKAGE
---------------------------------------
+FOR DEVELOPERS
+--------------
 
-From the main project folder (Load Optimization), run:
+Rebuild this package from the main project folder:
 
   build_exe.bat
 
-That rebuilds Load Planner.exe and refreshes this folder automatically.
+Full documentation: README.md and DEPLOY_WORK_PC.md in the source project.
