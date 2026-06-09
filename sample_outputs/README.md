@@ -1,6 +1,6 @@
 # Sample load plan outputs
 
-Example outputs for three crate mixes (25 crates each, UK trailer 1360 × 240 × 270 cm).
+Example outputs for three crate mixes (25 crates each, using the default demo trailer preset).
 
 Regenerate anytime:
 
@@ -20,5 +20,5 @@ Each folder contains:
 - `report.txt` — full text report
 - `load_plan.png` — floor-plan image
 
-**Normal** = two crates fit side-by-side across the 240 cm trailer width.  
+**Normal** = two crates fit side-by-side across the trailer width.  
 **Wide** = one crate per row on the left or right wall (chessboard).

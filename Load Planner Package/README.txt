@@ -37,23 +37,21 @@ QUICK START
 1. Place your Excel file here as crate_data.xlsx,
    or click Browse in the app to select another file.
 
-2. Enter a trailer / load name (e.g. UK-01).
+2. Enter a trailer / load name (e.g. Load-01).
    This name appears on the plot and in the filename.
 
-3. Tick "Standard UK trailer" or enter custom dimensions.
+3. Use the default trailer preset or enter custom dimensions.
 
 4. Click Run load plan.
 
 5. Click Open latest plot, or Open load_plans folder.
 
 
-STANDARD UK TRAILER
--------------------
+TRAILER CONFIGURATION
+---------------------
 
-  Length:     1360 cm  (door to cab)
-  Width:      240 cm
-  Height:     270 cm
-  Max weight: 26,000 kg
+  Enter length, width, height, and maximum weight in the app,
+  or use the default preset for quick demos.
 
 
 EXCEL FORMAT

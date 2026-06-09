@@ -40,7 +40,7 @@ If asked *“Would you deploy this tomorrow?”* — the honest answer is **no**
 
 ## About this project
 
-This tool addresses a **workplace-inspired problem** — planning UK trailer loads for heavy crates — simplified into a demonstrable prototype.
+This tool addresses a **workplace-inspired problem** — planning trailer loads for heavy crates — simplified into a demonstrable prototype.
 
 ### How it was built
 
@@ -77,7 +77,7 @@ This is intentionally **not** an enterprise optimisation engine. It is a **focus
 | Capability | Description |
 |------------|-------------|
 | **Read Excel input** | Loads crate asset tags, weights, and dimensions from `crate_data.xlsx`. |
-| **Trailer configuration** | Standard UK preset (1360 × 240 × 270 cm, 26 t) or custom dimensions via GUI/console. |
+| **Trailer configuration** | Default preset or custom length, width, height, and max weight via GUI/console. |
 | **Two-phase loading** | **Phase 1 — Pairing:** places two crates side-by-side when combined width fits. **Phase 2 — Chessboard:** places remaining crates one per row on alternating left/right walls. |
 | **Cab-first loading** | Fills from the **cab end toward the doors**, preferring heavier weight at the cab. |
 | **Balance enforcement** | Keeps left/right weight imbalance within **10%** (configurable in code). |
@@ -160,7 +160,7 @@ pip install -r requirements.txt
 |--------|---------|
 | Desktop app | Double-click `Run Load Planner.bat` |
 | Console | `python Load_Optimization.py` |
-| UK quick test | `python Load_Optimization.py --uk --name UK-01` |
+| Quick test | `python Load_Optimization.py` (accept the default trailer preset when prompted) |
 | Build exe | Double-click `build_exe.bat` |
 | Generate test data | `python dummy_generator.py` |
 
@@ -195,14 +195,9 @@ load_plans/load_plan_<trailer-name>_<timestamp>.png
 
 ---
 
-## Standard UK trailer preset
+## Trailer configuration
 
-| Dimension | Value |
-|-----------|--------|
-| Length | 1360 cm (door to cab) |
-| Width | 240 cm |
-| Height | 270 cm |
-| Max weight | 26,000 kg |
+Trailer **length**, **width**, **height**, and **maximum weight** are entered in the app or at the console prompt. A **default preset** is available for quick demos; custom dimensions can be used for any trailer type.
 
 ---
 

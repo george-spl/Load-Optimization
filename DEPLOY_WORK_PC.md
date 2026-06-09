@@ -31,8 +31,8 @@ Load Planner Package/
 ### User steps
 
 1. Double-click **`Load Planner.exe`**.
-2. Enter a trailer / load name (e.g. `UK-01`) — this appears on the plot and in filenames.
-3. Tick **Standard UK trailer** or enter custom dimensions.
+2. Enter a trailer / load name (e.g. `Load-01`) — this appears on the plot and in filenames.
+3. Use the **default trailer preset** or enter custom dimensions.
 4. Select the Excel file (**Browse** if not using `crate_data.xlsx` in this folder).
 5. Click **Run load plan**.
 6. Click **Open latest plot** or **Open load_plans folder**.
@@ -84,8 +84,9 @@ Load Optimization/
 
 ```cmd
 python Load_Optimization.py
-python Load_Optimization.py --uk --name UK-01
 ```
+
+Accept the default trailer preset at the prompt, or enter custom dimensions.
 
 Not intended for warehouse or office staff.
 
@@ -120,14 +121,9 @@ If PyInstaller fails, the script reports **Build FAILED** and does not copy an o
 
 ---
 
-## Standard UK trailer preset
+## Trailer configuration
 
-| Dimension | Value |
-|-----------|--------|
-| Length | 1360 cm (door to cab) |
-| Width | 240 cm |
-| Height | 270 cm |
-| Max weight | 26,000 kg |
+Length, width, height, and maximum weight are set in the app or at the console prompt. A default preset is available for quick demos.
 
 ---
 
